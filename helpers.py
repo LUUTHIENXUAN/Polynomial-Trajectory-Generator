@@ -1,13 +1,17 @@
 from math import sqrt, exp
 from matplotlib import pyplot as plt
 
+from matplotlib import pyplot
+from mpl_toolkits.mplot3d import Axes3D
+import random
+
 class Vehicle(object):
     """
     Helper class. Non-ego vehicles move w/ constant acceleration
     """
     def __init__(self, start):
         self.start_state = start
-    
+
     def state_in(self, t):
         s = self.start_state[:3]
         d = self.start_state[3:]
@@ -23,7 +27,7 @@ class Vehicle(object):
 
 def logistic(x):
     """
-    A function that returns a value between 0 and 1 for x in the 
+    A function that returns a value between 0 and 1 for x in the
     range [0, infinity] and -1 to 1 for x in the range [-infinity, infinity].
 
     Useful for cost functions.
@@ -37,9 +41,12 @@ def to_equation(coefficients):
     """
     def f(t):
         total = 0.0
-        for i, c in enumerate(coefficients): 
+
+        for i, c in enumerate(coefficients):
             total += c * t ** i
+
         return total
+
     return f
 
 def differentiate(coefficients):
@@ -48,8 +55,10 @@ def differentiate(coefficients):
     the corresponding coefficients.
     """
     new_cos = []
+
     for deg, prev_co in enumerate(coefficients[1:]):
         new_cos.append((deg+1) * prev_co)
+
     return new_cos
 
 def nearest_approach_to_any_vehicle(traj, vehicles):
@@ -57,36 +66,47 @@ def nearest_approach_to_any_vehicle(traj, vehicles):
     Calculates the closest distance to any vehicle during a trajectory.
     """
     closest = 999999
+
     for v in vehicles.values():
-        d = nearest_approach(traj,v)
+        d = nearest_approach(traj , v)
         if d < closest:
             closest = d
+
     return closest
 
 def nearest_approach(traj, vehicle):
+
     closest = 999999
     s_,d_,T = traj
     s = to_equation(s_)
     d = to_equation(d_)
+
     for i in range(100):
         t = float(i) / 100 * T
         cur_s = s(t)
         cur_d = d(t)
         targ_s, _, _, targ_d, _, _ = vehicle.state_in(t)
+
         dist = sqrt((cur_s-targ_s)**2 + (cur_d-targ_d)**2)
+
         if dist < closest:
             closest = dist
+
     return closest
 
 def show_trajectory(s_coeffs, d_coeffs, T, vehicle=None):
+
     s = to_equation(s_coeffs)
     d = to_equation(d_coeffs)
     X = []
     Y = []
+
     if vehicle:
         X2 = []
         Y2 = []
+
     t = 0
+
     while t <= T+0.01:
         X.append(s(t))
         Y.append(d(t))
@@ -95,15 +115,101 @@ def show_trajectory(s_coeffs, d_coeffs, T, vehicle=None):
             X2.append(s_)
             Y2.append(d_)
         t += 0.25
-    plt.scatter(X,Y,color="blue")
+
+    plt.scatter(X,Y,color="blue", label="Self-driving car")
     if vehicle:
-        plt.scatter(X2, Y2,color="red")
+        plt.scatter(X2, Y2,color="red", label="A vehicle in traffic")
+    plt.title("Polynomial Trajectory Generator")
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper right', borderaxespad=1, fontsize=18)
+    plt.xlabel("d")
+    plt.ylabel("s")
+    #plt.tight_layout()
     plt.show()
 
+def show_all_trajectories(best_trajectory, other_trajectories, vehicle=None):
+
+    def cal_trajectory(trajectory):
+        s = to_equation(trajectory[0])
+        d = to_equation(trajectory[1])
+        X = []
+        Y = []
+        T = []
+
+        t = 0
+        while t <= trajectory[2] + 0.01:
+            X.append(s(t))
+            Y.append(d(t))
+            T.append(t)
+            t += 0.25
+
+        return X,Y,T
+
+    def manual_vehicle(trajectory):
+        X = []
+        Y = []
+        T = []
+
+        t = 0
+
+        while t <= trajectory[2] + 0.01:
+            s_, _, _, d_, _, _ = vehicle.state_in(t)
+            X.append(s_)
+            Y.append(d_)
+            T.append(t)
+            t += 0.25
+        return X, Y, T
+
+
+    X_best, Y_best, T_best = cal_trajectory(best_trajectory)
+    plt.scatter(X_best, Y_best,
+                color="yellow", label="Self-driving car", s= 500,
+                marker="*", alpha=0.5, linewidths="2", edgecolors="orange")
+
+    for other in other_trajectories:
+        X_other, Y_other, T_other = cal_trajectory(other)
+        plt.scatter(X_other, Y_other, color="grey", s= 10)
+
+    if vehicle:
+        X_manual, Y_manual, T_manual = manual_vehicle(best_trajectory)
+        plt.scatter(X_manual, Y_manual,
+                    color="pink", label="A vehicle in traffic", s= 500,
+                    alpha=0.5, linewidths="2", edgecolors="red")
+
+    # 2D figure
+    plt.title("Polynomial Trajectory Generator")
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper right', borderaxespad=1, fontsize=18)
+    plt.xlabel("s")
+    plt.ylabel("d")
+    plt.tight_layout()
+    #plt.show()
+
+    # 3D figure
+    fig = pyplot.figure()
+    ax  = fig.add_subplot(111, projection='3d') #Axes3D(fig)
+    ax.set_title('3D Polynomial Trajectory Generator');
+    ax.set_xlabel('s', fontsize=18)
+    ax.set_ylabel('d', fontsize=18)
+    ax.set_zlabel('t')
+
+    ax.scatter(X_best, Y_best, T_best,
+               alpha=0.5, color="yellow", label="Self-driving car", s= 200)
+
+    for other in other_trajectories:
+        X_other, Y_other, T_other = cal_trajectory(other)
+        ax.scatter(X_other, Y_other, T_other,
+                   color="grey", s= 50, alpha=0.8)
+
+    ax.scatter(X_manual, Y_manual, T_manual,
+               alpha=0.5, color="pink", label="A vehicle in traffic", s= 200)
+    pyplot.legend(fontsize=18)
+    pyplot.show()
+
 def get_f_and_N_derivatives(coeffs, N=3):
+
     functions = [to_equation(coeffs)]
+
     for i in range(N):
         coeffs = differentiate(coeffs)
         functions.append(to_equation(coeffs))
-    return functions
 
+    return functions
