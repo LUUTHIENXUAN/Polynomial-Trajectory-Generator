@@ -26,8 +26,8 @@ def s_diff_cost(traj, target_vehicle, delta, T, predictions):
     cost    = 0
 
     for actual, expected, sigma in zip(S, s_targ, SIGMA_S):
-        #diff  = float(abs(actual-expected))
-        diff  = float(actual-expected)
+        diff  = float(abs(actual-expected))
+        #diff  = float(actual-expected)
         cost += logistic(diff/sigma)
 
     return cost
@@ -91,6 +91,8 @@ def exceeds_speed_limit_cost(traj, target_vehicle, delta, T, predictions):
     if v < target_speed:
 
         cost = stop_cost * ((target_speed- v)/target_speed)
+
+    else : cost = 1
 
     return cost
     #pass

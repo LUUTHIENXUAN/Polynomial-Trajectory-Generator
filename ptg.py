@@ -7,9 +7,9 @@ import heapq
 # TODO - tweak weights to existing cost functions
 WEIGHTED_COST_FUNCTIONS = [
     (time_diff_cost,           1), # requested duration cost
-    (s_diff_cost,              4), # s coordinate differ from the goal cost
-    (d_diff_cost,              2), # d coordinate differ from the goal cost
-    (collision_cost,          10), # collisions cost
+    (s_diff_cost,              8), # s coordinate differ from the goal cost
+    (d_diff_cost,              7), # d coordinate differ from the goal cost
+    (collision_cost,          20), # collisions cost
     (buffer_cost,              1), # getting close to other vehicles cost
     (exceeds_speed_limit_cost, 1), #
     (efficiency_cost,          1), # rewards high average speeds cost
@@ -65,6 +65,13 @@ def PTG(start_s, start_d, target_vehicle, delta, T, predictions):
         for _ in range(N_SAMPLES):
 
             perturbed = perturb_goal(goal_s, goal_d)
+
+            # filter all invalid perturbed goal
+
+            invalid = [(abs(goal_s[0] - s) * abs(goal_d[0] - d) > 10)
+                       for s in perturbed[0] for d in perturbed[1] ]
+            if True in invalid: continue
+
             goals.append((perturbed[0], perturbed[1], t))
 
         all_goals += goals
@@ -115,6 +122,7 @@ def perturb_goal(goal_s, goal_d):
     """
     Returns a "perturbed" version of the goal.
     """
+    #random.seed(0)
     new_s_goal = []
     for mu, sig in zip(goal_s, SIGMA_S):
         new_s_goal.append(random.gauss(mu, sig))
